@@ -12,6 +12,8 @@ use core::panic::PanicInfo;
 use rust_os::println;
 
 pub mod interpreter;
+pub mod parser;
+pub mod ast;
 
 entry_point!(kernel_main);
 

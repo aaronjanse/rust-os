@@ -1,14 +1,20 @@
 use alloc::{vec::Vec, string::String};
 use crate::println;
 
+
 pub fn test_interpreter() {
-  let text = String::from("true");
+  let text = String::from(r#"
+1 + 1
+  "#);
   let mut tokens: Vec<Token> = Vec::new();
-  ParserIter::init(&text).parse(&mut tokens);
+  ScannerIter::init(&text).scan(&mut tokens);
   println!("{:?}", tokens);
+
+  let parsed = crate::parser::parseFile(&tokens[..]);
+  println!("{}", parsed.repr())
 }
 
-struct ParserIter<'a> {
+struct ScannerIter<'a> {
   source: &'a String,
   iter: core::iter::Peekable<core::str::Chars<'a>>,
   next: Option<char>,
@@ -16,18 +22,18 @@ struct ParserIter<'a> {
   line: usize,
 }
 
-impl<'a> ParserIter<'a> {
-  fn init(source: &'a String) -> ParserIter<'a> {
+impl<'a> ScannerIter<'a> {
+  fn init(source: &'a String) -> ScannerIter<'a> {
     let mut iter = source.chars().peekable();
     let next = iter.next();
-    ParserIter {
+    ScannerIter {
       source, iter, next,
       buffer: String::from(""),
       line: 0,
     }
   }
 
-  fn parse(&mut self, tokens: &mut Vec<Token>) {
+  fn scan(&mut self, tokens: &mut Vec<Token>) {
     let mut error: Option<String> = None;
 
     use TokenType::*;
@@ -45,6 +51,20 @@ impl<'a> ParserIter<'a> {
           '}' => RightCurlyBrace,
           ':' => Colon,
           '+' => Plus,
+
+          '"' => {
+              loop {
+                  match self.next() {
+                      Some(i) => match i {
+                        '\\' => {self.advance();},
+                        '"' => break,
+                        _ => (),
+                      },
+                      None => break,
+                  }
+              }
+              LiteralString
+          }
 
           '!' => match self.peek() {
             Some('=') => {self.advance(); NotEqual},
@@ -96,7 +116,6 @@ impl<'a> ParserIter<'a> {
                         Some(c) => match c {
                           '0'..='9' => self.advance(),
                           _ => {
-                            error = Some(format!("Invalid char {:?}", c));
                             break
                           },
                         }
@@ -105,13 +124,28 @@ impl<'a> ParserIter<'a> {
                     break
                   },
                   _ => {
-                    error = Some(format!("Invalid char {:?}", c));
                     break
                   },
                 }
               }
             };
             Number
+          },
+
+          'a'..='z' | 'A'..='Z' => {
+              loop {
+                  match self.peek() {
+                      Some(i) => match i {
+                        'a'..='z'|'A'..='Z'|'0'..='9'|'-'|'_' => self.advance(),
+                        _ => break,
+                      },
+                      None => break,
+                  };
+              };
+              match self.buffer.as_ref() {
+                  "println" => KeywordPrintln,
+                  _ => Identifier,
+              }
           },
 
           _ => Unrecognized,
@@ -168,25 +202,26 @@ impl<'a> ParserIter<'a> {
     self.next
   }
 
-  fn peek2(&mut self) -> Option<char> {
-    match self.iter.peek() {
-      Some(i) => Some(*i),
-      None => None,
-    }
-  }
+//   fn peek2(&mut self) -> Option<char> {
+//     match self.iter.peek() {
+//       Some(i) => Some(*i),
+//       None => None,
+//     }
+//   }
 }
 
 
 #[derive(Debug)]
-struct Token {
-  kind: TokenType,
-  line: usize,
-  literal: String,
+pub struct Token {
+  pub kind: TokenType,
+  pub line: usize,
+  pub literal: String,
 }
 
 #[allow(dead_code)]
 #[derive(Debug)]
-enum TokenType {
+#[derive(PartialEq)]
+pub enum TokenType {
   Unrecognized,
 
   // Single-character tokens.
@@ -206,13 +241,15 @@ enum TokenType {
   PipeForwards,  // |>
 
   // Literals.
-  Identifier, Str, Number,
+  Identifier, LiteralString, Number,
 
   // Keywords.
   True, False,
   If, Then, Else,
   Let, In,
   Yield,
+
+  KeywordPrintln,
 
   Comment,
   Ignore,
