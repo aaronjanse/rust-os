@@ -1,11 +1,29 @@
-use alloc::{boxed::Box, string::String};
+use alloc::{boxed::Box, string::String, vec::Vec};
 use crate::interpreter::{TokenType, TokenType::*};
-use crate::println;
+// use crate::println;
 use LangValue::*;
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub enum LangValue {
     LangNumber(f64),
+    LangString(String),
+    LangNone,
+}
+impl Expr for LangValue {
+    fn eval(&self) -> LangValue {
+        self.clone()
+    }
+}
+impl Representable for LangValue {
+    fn repr(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+pub enum ExprOrDecl {
+    Expression(Box<dyn Expr>),
+    Declaration(Decl),
 }
 
 // pub fn repr_lang_val(val: LangValue) -> String {
@@ -13,23 +31,63 @@ pub enum LangValue {
 // }
 
 
-pub trait Expr {
-    fn repr(&self) -> String;
+pub trait Expr: Representable {
     fn eval(&self) -> LangValue;
 }
+pub trait Representable {
+    fn repr(&self) -> String;
+}
 
-// pub struct Def {
-//     name: str,
-//     args: Vec<Expr>,
-//     body: Expr,
-// }
+pub struct Decl {
+    pub name: String,
+    pub params: Vec<String>,
+    pub body: Box<dyn Expr>,
+}
+impl Representable for Decl {
+    fn repr(&self) -> String {
+        format!("def {} ({:?}) -> {}", self.name, self.params, self.body.repr())
+    }
+}
+
+pub struct FnCall {
+    pub name: String,
+    pub args: Vec<Box<dyn Expr>>,
+}
+impl Expr for FnCall {
+    fn eval(&self) -> LangValue {
+        LangNone
+    }
+}
+impl Representable for FnCall {
+    fn repr(&self) -> String {
+        let mut arg_strs: Vec<String> = Vec::new();
+        for i in 0..self.args.len() {
+            arg_strs.push(self.args[i].repr());
+        }
+        format!("(do {} {:?})", self.name, arg_strs)
+    }
+}
+
+pub struct Identifier {
+    pub name: String,
+}
+impl Representable for Identifier {
+    fn repr(&self) -> String {
+        self.name.clone()
+    }
+}
+impl Expr for Identifier {
+    fn eval(&self) -> LangValue {
+        LangNone
+    }
+}
 
 pub struct BinaryExpr {
     pub oper: TokenType,
     pub left: Box<dyn Expr>,
     pub right: Box<dyn Expr>,
 }
-impl Expr for BinaryExpr {
+impl Representable for BinaryExpr {
     fn repr(&self) -> String {
         let oper_str = match self.oper {
             Star => "*",
@@ -40,6 +98,8 @@ impl Expr for BinaryExpr {
         };
         format!("({} {} {})", oper_str, self.left.repr(), self.right.repr())
     }
+}
+impl Expr for BinaryExpr {
     fn eval(&self) -> LangValue {
         match self.oper {
             Star | Slash | Plus | Minus => {
@@ -66,21 +126,3 @@ impl Expr for BinaryExpr {
         }
     }
 }
-
-pub struct LiteralNumber {
-    pub value: f64,
-}
-impl Expr for LiteralNumber {
-    fn repr(&self) -> String {
-        format!("{}", self.value)
-    }
-    fn eval(&self) -> LangValue {
-        return LangNumber(self.value)
-    }
-}
-
-// impl Expr for Addition {
-//     fn interpret(&self) {
-//         return self.left.interpret() + self.right.interpret();
-//     }
-// }

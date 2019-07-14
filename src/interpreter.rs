@@ -1,18 +1,24 @@
 use alloc::{vec::Vec, string::String};
+use crate::ast::ExprOrDecl::*;
+use crate::ast::*;
 use crate::println;
 
 
 pub fn test_interpreter() {
   let text = String::from(r#"
-1 + 2 * 3
+println 1+2;
   "#);
   let mut tokens: Vec<Token> = Vec::new();
   ScannerIter::init(&text).scan(&mut tokens);
   // println!("{:?}", tokens);
 
   let ast = crate::parser::parse_file(&mut tokens.iter().peekable());
-  println!("{}", ast.repr());
-  println!("{:?}", ast.eval());
+  let repr = match ast {
+    Declaration(x) => x.repr(),
+    Expression(x) => x.repr(),
+  };
+  println!("{}", repr);
+  // println!("{:?}", ast.eval());
 }
 
 struct ScannerIter<'a> {
@@ -52,8 +58,8 @@ impl<'a> ScannerIter<'a> {
           '}' => RightCurlyBrace,
           ':' => Colon,
           '+' => Plus,
-
           '*' => Star,
+          ';' => Semicolon,
 
           '"' => {
               loop {
@@ -145,10 +151,7 @@ impl<'a> ScannerIter<'a> {
                       None => break,
                   };
               };
-              match self.buffer.as_ref() {
-                  "println" => KeywordPrintln,
-                  _ => Identifier,
-              }
+              LiteralIdentifier
           },
 
           _ => Unrecognized,
@@ -216,6 +219,7 @@ impl<'a> ScannerIter<'a> {
 
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct Token {
   pub kind: TokenType,
   pub line: usize,
@@ -236,7 +240,7 @@ pub enum TokenType {
   LeftCurlyBrace, RightCurlyBrace,
   Colon, Pipe, Backslash,
   Plus, Minus, Star, Slash,
-  Dollar,
+  Dollar, Semicolon,
 
   // One or two character tokens.
   Equal, EqualEqual, NotEqual,
@@ -247,15 +251,13 @@ pub enum TokenType {
   PipeForwards,  // |>
 
   // Literals.
-  Identifier, LiteralString, Number,
+  LiteralIdentifier, LiteralString, Number,
 
   // Keywords.
   True, False,
   If, Then, Else,
   Let, In,
   Yield,
-
-  KeywordPrintln,
 
   Comment,
   Ignore,
