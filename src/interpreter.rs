@@ -4,13 +4,13 @@ use crate::println;
 
 pub fn test_interpreter() {
   let text = String::from(r#"
-1 + 1
+1 + 2 * 3
   "#);
   let mut tokens: Vec<Token> = Vec::new();
   ScannerIter::init(&text).scan(&mut tokens);
   println!("{:?}", tokens);
 
-  let parsed = crate::parser::parseFile(&tokens[..]);
+  let parsed = crate::parser::parseFile(&mut tokens.iter().peekable());
   println!("{}", parsed.repr())
 }
 
@@ -51,6 +51,8 @@ impl<'a> ScannerIter<'a> {
           '}' => RightCurlyBrace,
           ':' => Colon,
           '+' => Plus,
+
+          '*' => Star,
 
           '"' => {
               loop {
@@ -154,6 +156,7 @@ impl<'a> ScannerIter<'a> {
       match error {
         None => {
           match tok {
+            Unrecognized => panic!("Unrecognized token: {:?}", tok),
             Eof => break,
             Ignore => self.buffer = String::from(""),
             _ => self.add_token(tokens, tok),
@@ -220,6 +223,8 @@ pub struct Token {
 
 #[allow(dead_code)]
 #[derive(Debug)]
+#[derive(Copy)]
+#[derive(Clone)]
 #[derive(PartialEq)]
 pub enum TokenType {
   Unrecognized,

@@ -3,44 +3,66 @@
 // }
 
 use alloc::{boxed::Box, vec::Vec, string::String};
-use crate::interpreter::{Token, TokenType::*};
+use crate::interpreter::{Token, TokenType, TokenType::*};
 use crate::ast::*;
 use crate::println;
+use core::slice::Iter;
+use core::iter::Peekable;
 
 
-pub fn parseFile<'a>(tokens: &[Token]) -> Box<Expr> {
+pub fn parseFile<'a>(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
     // root is a list of definitions
 
-    return parseAddition(tokens);
+    return parseExpr(&mut tokens);
 }
 
-fn parseExpr<'a>(tokens: &[Token]) -> Box<Expr> {
-    if tokens.len() == 1 {
-        assert_eq!(tokens[0].kind, Number);
-        return Box::new(LiteralNumber{
-            value: tokens[0].literal.parse::<f64>().unwrap(),
-        });
-    }
-    return parseAddition(tokens);
+fn parseExpr<'a>(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
+    return parseAddition(&mut tokens);
 }
 
-fn parseAddition<'a>(tokens: &[Token]) -> Box<Expr> {
-    for (i, tok) in tokens.iter().enumerate() {
-        if tok.kind == Plus {
-            let left = parseExpr(&tokens[..i]);
-            let right = parseExpr(&tokens[i+1..]);
-            return Box::new(Addition{
-                left: left,
-                right: right,
-            });
+fn parseAddition<'a>(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
+    return binaryParser(tokens, parseMult, &[Plus, Minus])
+}
+
+fn binaryParser<'a>(
+            mut tokens: &mut Peekable<Iter<Token>>,
+            subParser: fn(&mut Peekable<Iter<Token>>) -> Box<Expr>,
+            opers: &[TokenType]) -> Box<Expr> {
+
+    let mut expr = subParser(&mut tokens);
+
+    loop {
+        match tokens.peek() {
+            Some(i) => {
+                let mut found = false;
+                for op in opers.iter() {
+                    if i.kind == *op {
+                        found = true;
+                        let oper = tokens.next().expect("EOF!").kind;
+                        let right = subParser(&mut tokens);
+                        expr = Box::new(BinaryExpr{
+                            oper, left: expr, right,
+                        });
+                        break;
+                    }
+                }
+                if !found {
+                    return expr;
+                }
+            }
+            None => return expr,
         }
     }
-    panic!("Could not parse!")
 }
 
-// fn parseDefList(toks: Vec<Token>) {
-//     assert_eq!(toks[0].kind, Identifier);
+fn parseMult<'a>(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
+    return binaryParser(tokens, parseUnary, &[Star, Slash])
+}
 
-//     let defName = toks[0];
-
-// }
+fn parseUnary(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
+    let tok = tokens.next().expect("unexpected EOF!");
+    assert_eq!(tok.kind, Number);
+    return Box::new(LiteralNumber{
+        value: tok.literal.parse::<f64>().unwrap(),
+    });
+}
