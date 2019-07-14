@@ -8,10 +8,11 @@ pub fn test_interpreter() {
   "#);
   let mut tokens: Vec<Token> = Vec::new();
   ScannerIter::init(&text).scan(&mut tokens);
-  println!("{:?}", tokens);
+  // println!("{:?}", tokens);
 
-  let parsed = crate::parser::parse_file(&mut tokens.iter().peekable());
-  println!("{}", parsed.repr())
+  let ast = crate::parser::parse_file(&mut tokens.iter().peekable());
+  println!("{}", ast.repr());
+  println!("{:?}", ast.eval());
 }
 
 struct ScannerIter<'a> {
