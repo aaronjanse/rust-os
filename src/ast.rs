@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, vec::Vec, string::String};
+use alloc::{boxed::Box, string::String};
 use crate::interpreter::TokenType;
 
 
@@ -16,19 +16,19 @@ pub trait Expr {
 
 pub struct BinaryExpr {
     pub oper: TokenType,
-    pub left: Box<Expr>,
-    pub right: Box<Expr>,
+    pub left: Box<dyn Expr>,
+    pub right: Box<dyn Expr>,
 }
 impl Expr for BinaryExpr {
     fn repr(&self) -> String {
-        let operStr = match self.oper {
+        let oper_str = match self.oper {
             TokenType::Star => "*",
             TokenType::Slash => "/",
             TokenType::Plus => "+",
             TokenType::Minus => "-",
             _ => "?",
         };
-        format!("({} {} {})", operStr, self.left.repr(), self.right.repr())
+        format!("({} {} {})", oper_str, self.left.repr(), self.right.repr())
     }
 }
 

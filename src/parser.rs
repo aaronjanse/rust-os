@@ -2,34 +2,34 @@
 //     fn visit(&mut self, v: &mut dyn Visitor) -> VResult;
 // }
 
-use alloc::{boxed::Box, vec::Vec, string::String};
+use alloc::{boxed::Box};
 use crate::interpreter::{Token, TokenType, TokenType::*};
 use crate::ast::*;
-use crate::println;
+// use crate::println;
 use core::slice::Iter;
 use core::iter::Peekable;
 
 
-pub fn parseFile<'a>(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
+pub fn parse_file(mut tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
     // root is a list of definitions
 
-    return parseExpr(&mut tokens);
+    return parse_expr(&mut tokens);
 }
 
-fn parseExpr<'a>(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
-    return parseAddition(&mut tokens);
+fn parse_expr(mut tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
+    return parse_addition(&mut tokens);
 }
 
-fn parseAddition<'a>(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
-    return binaryParser(tokens, parseMult, &[Plus, Minus])
+fn parse_addition(tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
+    return binary_parser(tokens, parse_mult, &[Plus, Minus])
 }
 
-fn binaryParser<'a>(
+fn binary_parser(
             mut tokens: &mut Peekable<Iter<Token>>,
-            subParser: fn(&mut Peekable<Iter<Token>>) -> Box<Expr>,
-            opers: &[TokenType]) -> Box<Expr> {
+            sub_parser: fn(&mut Peekable<Iter<Token>>) -> Box<dyn Expr>,
+            opers: &[TokenType]) -> Box<dyn Expr> {
 
-    let mut expr = subParser(&mut tokens);
+    let mut expr = sub_parser(&mut tokens);
 
     loop {
         match tokens.peek() {
@@ -39,7 +39,7 @@ fn binaryParser<'a>(
                     if i.kind == *op {
                         found = true;
                         let oper = tokens.next().expect("EOF!").kind;
-                        let right = subParser(&mut tokens);
+                        let right = sub_parser(&mut tokens);
                         expr = Box::new(BinaryExpr{
                             oper, left: expr, right,
                         });
@@ -55,11 +55,11 @@ fn binaryParser<'a>(
     }
 }
 
-fn parseMult<'a>(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
-    return binaryParser(tokens, parseUnary, &[Star, Slash])
+fn parse_mult(tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
+    return binary_parser(tokens, parse_unary, &[Star, Slash])
 }
 
-fn parseUnary(mut tokens: &mut Peekable<Iter<Token>>) -> Box<Expr> {
+fn parse_unary(tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
     let tok = tokens.next().expect("unexpected EOF!");
     assert_eq!(tok.kind, Number);
     return Box::new(LiteralNumber{

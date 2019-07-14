@@ -10,7 +10,7 @@ pub fn test_interpreter() {
   ScannerIter::init(&text).scan(&mut tokens);
   println!("{:?}", tokens);
 
-  let parsed = crate::parser::parseFile(&mut tokens.iter().peekable());
+  let parsed = crate::parser::parse_file(&mut tokens.iter().peekable());
   println!("{}", parsed.repr())
 }
 
@@ -34,7 +34,7 @@ impl<'a> ScannerIter<'a> {
   }
 
   fn scan(&mut self, tokens: &mut Vec<Token>) {
-    let mut error: Option<String> = None;
+    let error: Option<String> = None;
 
     use TokenType::*;
     loop {
