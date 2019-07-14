@@ -6,7 +6,7 @@ use crate::println;
 
 pub fn test_interpreter() {
   let text = String::from(r#"
-println 1+2;
+[1, 2, 3]
   "#);
   let mut tokens: Vec<Token> = Vec::new();
   ScannerIter::init(&text).scan(&mut tokens);
@@ -60,6 +60,7 @@ impl<'a> ScannerIter<'a> {
           '+' => Plus,
           '*' => Star,
           ';' => Semicolon,
+          ',' => Comma,
 
           '"' => {
               loop {
@@ -240,7 +241,7 @@ pub enum TokenType {
   LeftCurlyBrace, RightCurlyBrace,
   Colon, Pipe, Backslash,
   Plus, Minus, Star, Slash,
-  Dollar, Semicolon,
+  Dollar, Semicolon, Comma,
 
   // One or two character tokens.
   Equal, EqualEqual, NotEqual,

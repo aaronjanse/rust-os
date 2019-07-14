@@ -8,6 +8,7 @@ use LangValue::*;
 pub enum LangValue {
     LangNumber(f64),
     LangString(String),
+    LangPair {left: Box<LangValue>, right: Box<LangValue>},
     LangNone,
 }
 impl Expr for LangValue {
@@ -123,6 +124,24 @@ impl Expr for BinaryExpr {
                 })
             },
             _ => panic!("Cannot eval {:?}", self.oper),
+        }
+    }
+}
+
+pub struct List {
+    pub left: Box<dyn Expr>,
+    pub right: Box<dyn Expr>,
+}
+impl Representable for List {
+    fn repr(&self) -> String {
+        format!("[{} {}]", self.left.repr(), self.right.repr())
+    }
+}
+impl Expr for List {
+    fn eval(&self) -> LangValue {
+        LangPair{
+            left: Box::new(self.left.eval()),
+            right: Box::new(self.right.eval()),
         }
     }
 }

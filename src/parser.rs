@@ -42,7 +42,7 @@ fn parse_expr_or_decl(tokens: &mut Peekable<Iter<Token>>) -> ExprOrDecl {
     }
 }
 
-fn parse_declaration(tokens: &mut Peekable<Iter<Token>>) -> Decl {
+fn parse_declaration(mut tokens: &mut Peekable<Iter<Token>>) -> Decl {
     let name = tokens.next().expect(" (de)").literal.clone();
     let mut params: Vec<String> = Vec::new();
 
@@ -57,7 +57,7 @@ fn parse_declaration(tokens: &mut Peekable<Iter<Token>>) -> Decl {
         }
     };
 
-    let body = parse_expr(tokens);
+    let body = parse_statement(&mut tokens);
 
     Decl{
         name, params, body,
@@ -101,8 +101,37 @@ fn parse_fn_call(mut tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
 }
 
 
-fn parse_expr(tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
-    return parse_addition(tokens)
+fn parse_expr(mut tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
+    return parse_square_braces(&mut tokens)
+}
+
+fn parse_square_braces(mut tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
+    if tokens.peek().expect("EOF []!").kind != LeftSquareBrace {
+        return parse_addition(&mut tokens)
+    }
+
+    tokens.next();
+
+    let mut items: Vec<Box<dyn Expr>> = Vec::new();
+    items.push(parse_addition(&mut tokens));
+    loop {
+        match tokens.next().expect(", or [").kind {
+            Comma => {
+                items.push(parse_addition(&mut tokens))
+            },
+            RightSquareBrace => {
+                let mut out = Box::new(LangNone) as Box<dyn Expr>;
+                while items.len() > 0 {
+                    out = Box::new(List{
+                        left: items.pop().expect("end?!"),
+                        right: out,
+                    });
+                }
+                return out;
+            },
+            _ => panic!("Expecting , or ]"),
+        }
+    }
 }
 
 fn parse_addition(tokens: &mut Peekable<Iter<Token>>) -> Box<dyn Expr> {
