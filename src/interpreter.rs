@@ -6,19 +6,18 @@ use crate::println;
 
 pub fn test_interpreter() {
   let text = String::from(r#"
-[1, 2, 3]
+[1, 2, (sum 3 4)]
   "#);
   let mut tokens: Vec<Token> = Vec::new();
   ScannerIter::init(&text).scan(&mut tokens);
-  // println!("{:?}", tokens);
 
-  let ast = crate::parser::parse_file(&mut tokens.iter().peekable());
+  let mut token_iter = crate::parser::TokenIter::from(tokens);
+  let ast = crate::parser::parse_file(&mut token_iter);
   let repr = match ast {
     Declaration(x) => x.repr(),
     Expression(x) => x.repr(),
   };
   println!("{}", repr);
-  // println!("{:?}", ast.eval());
 }
 
 struct ScannerIter<'a> {
