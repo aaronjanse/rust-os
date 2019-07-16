@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, string::String, vec::Vec};
 use crate::interpreter::{TokenType, TokenType::*};
-// use crate::println;
+use crate::alloc::slice::SliceConcatExt;
 use LangValue::*;
 
 #[derive(Debug)]
@@ -25,6 +25,14 @@ impl Representable for LangValue {
 pub enum ExprOrDecl {
     Expression(Box<dyn Expr>),
     Declaration(Decl),
+}
+impl Representable for ExprOrDecl {
+    fn repr(&self) -> String {
+        match self {
+            ExprOrDecl::Expression(x) => x.repr(),
+            ExprOrDecl::Declaration(x) => x.repr(),
+        }
+    }
 }
 
 // pub fn repr_lang_val(val: LangValue) -> String {
@@ -143,5 +151,28 @@ impl Expr for List {
             left: Box::new(self.left.eval()),
             right: Box::new(self.right.eval()),
         }
+    }
+}
+
+pub struct Block {
+    pub items: Vec<ExprOrDecl>,
+}
+impl Representable for Block {
+    fn repr(&self) -> String {
+        let mut strs: Vec<String> = Vec::new();
+        let mut i = 0;
+        loop {
+            if i >= self.items.len() {
+                break;
+            }
+            strs.push(self.items[i].repr());
+            i += 1;
+        }
+        format!("{{{}}}", strs.join("\n"))
+    }
+}
+impl Expr for Block {
+    fn eval(&self) -> LangValue {
+        LangNone
     }
 }

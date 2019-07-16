@@ -8,8 +8,16 @@ use crate::ast::*;
 use crate::ast::LangValue::*;
 
 
-pub fn parse_file(mut tokens: &mut TokenIter) -> ExprOrDecl {
-    return parse_expr_or_decl(&mut tokens);
+pub fn parse_file(mut tokens: &mut TokenIter) -> Vec<Decl> {
+    let mut decls: Vec<Decl> = Vec::new();
+    loop {
+        if tokens.at_end() {
+            return decls;
+        }
+
+        let decl = parse_declaration(&mut tokens);
+        decls.push(decl);
+    }
 }
 
 fn parse_expr_or_decl(mut tokens: &mut TokenIter) -> ExprOrDecl {
@@ -56,7 +64,7 @@ fn parse_declaration(mut tokens: &mut TokenIter) -> Decl {
 }
 
 fn parse_statement(mut tokens: &mut TokenIter) -> Box<dyn Expr> {
-    return parse_fn_call(&mut tokens);
+    parse_fn_call(&mut tokens)
 }
 
 fn parse_fn_call(mut tokens: &mut TokenIter) -> Box<dyn Expr> {
@@ -94,11 +102,28 @@ fn parse_fn_call(mut tokens: &mut TokenIter) -> Box<dyn Expr> {
         },
     }
 
-    return Box::new(FnCall{name, args});
+    Box::new(FnCall{name, args})
 }
 
 fn parse_expr(mut tokens: &mut TokenIter) -> Box<dyn Expr> {
-    return parse_square_braces(&mut tokens)
+    parse_block(&mut tokens)
+}
+
+pub fn parse_block(mut tokens: &mut TokenIter) -> Box<dyn Expr> {
+    if !tokens.matches(LeftCurlyBrace) {
+        return parse_square_braces(&mut tokens);
+    }
+    tokens.next();
+
+    let mut items: Vec<ExprOrDecl> = Vec::new();
+    loop {
+        if tokens.matches(RightCurlyBrace) {
+            tokens.next();
+            return Box::new(Block{items});
+        }
+        let expr_or_decl = parse_expr_or_decl(&mut tokens);
+        items.push(expr_or_decl);
+    }
 }
 
 fn parse_square_braces(mut tokens: &mut TokenIter) -> Box<dyn Expr> {
@@ -145,16 +170,16 @@ fn parse_parens(mut tokens: &mut TokenIter) -> Box<dyn Expr> {
 }
 
 fn parse_addition(tokens: &mut TokenIter) -> Box<dyn Expr> {
-    return binary_parser(tokens, parse_mult, &[Plus, Minus])
+    binary_parser(tokens, parse_mult, &[Plus, Minus])
 }
 
 fn parse_mult(tokens: &mut TokenIter) -> Box<dyn Expr> {
-    return binary_parser(tokens, parse_unary, &[Star, Slash])
+    binary_parser(tokens, parse_unary, &[Star, Slash])
 }
 
 fn parse_unary(tokens: &mut TokenIter) -> Box<dyn Expr> {
     // FIXME: implement unary!
-    return parse_single_token(tokens.next());
+    parse_single_token(tokens.next())
 }
 
 fn parse_single_token(token: Token) -> Box<dyn Expr> {

@@ -1,23 +1,23 @@
 use alloc::{vec::Vec, string::String};
-use crate::ast::ExprOrDecl::*;
 use crate::ast::*;
 use crate::println;
 
 
 pub fn test_interpreter() {
   let text = String::from(r#"
-[1, 2, (sum 3 4)]
+run eval print println = {
+  println 1;
+  println 2;
+}
   "#);
   let mut tokens: Vec<Token> = Vec::new();
   ScannerIter::init(&text).scan(&mut tokens);
 
   let mut token_iter = crate::parser::TokenIter::from(tokens);
   let ast = crate::parser::parse_file(&mut token_iter);
-  let repr = match ast {
-    Declaration(x) => x.repr(),
-    Expression(x) => x.repr(),
-  };
-  println!("{}", repr);
+  for decl in ast {
+    println!("{}", decl.repr());
+  }
 }
 
 struct ScannerIter<'a> {
