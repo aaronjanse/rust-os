@@ -13,9 +13,12 @@ use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
 use rust_os::println;
 
-pub mod interpreter;
-pub mod parser;
+pub mod lang;
+pub mod scan;
+pub mod parse;
+pub mod interpret;
 pub mod ast;
+pub mod value;
 
 entry_point!(kernel_main);
 
@@ -24,7 +27,6 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     use rust_os::{memory, allocator};
     use rust_os::memory::BootInfoFrameAllocator;
 
-    // println!("Hello World{}", "!");
     rust_os::init();
 
     let mut mapper = unsafe { memory::init(boot_info.physical_memory_offset) };
@@ -35,37 +37,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("heap initialization failed");
 
-    // // map a previously unmapped page
-    // let page = Page::containing_address(VirtAddr::new(0x1000));
-    // memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
-
-    // // write the string `New!` to the screen through the new mapping
-    // let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-    // unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};
-
-    // let heap_value = Box::new(41);
-    // println!("heap_value at {:p}", heap_value);
-
-    // // create a dynamically sized vector
-    // let mut vec = Vec::new();
-    // for i in 0..500 {
-    //     vec.push(i);
-    // }
-    // println!("vec at {:p}", vec.as_slice());
-
-    // // create a reference counted vector -> will be freed when count reaches 0
-    // let reference_counted = Rc::new(vec![1, 2, 3]);
-    // let cloned_reference = reference_counted.clone();
-    // println!("current reference count is {}", Rc::strong_count(&cloned_reference));
-    // core::mem::drop(reference_counted);
-    // println!("reference count is {} now", Rc::strong_count(&cloned_reference));
-
-    interpreter::test_interpreter();
+    lang::test_interpreter();
 
     #[cfg(test)]
     test_main();
 
-    // println!("It did not crash!");
     rust_os::hlt_loop()
 }
 

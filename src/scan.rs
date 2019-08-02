@@ -1,23 +1,52 @@
 use alloc::{vec::Vec, string::String};
-use crate::ast::*;
 use crate::println;
 
-
-pub fn test_interpreter() {
-  let text = String::from(r#"
-run eval print println = {
-  println 1;
-  println 2;
+#[derive(Debug)]
+#[derive(Clone)]
+pub struct Token {
+  pub kind: TokenType,
+  pub line: usize,
+  pub literal: String,
 }
-  "#);
-  let mut tokens: Vec<Token> = Vec::new();
-  ScannerIter::init(&text).scan(&mut tokens);
 
-  let mut token_iter = crate::parser::TokenIter::from(tokens);
-  let ast = crate::parser::parse_file(&mut token_iter);
-  for decl in ast {
-    println!("{}", decl.repr());
-  }
+#[allow(dead_code)]
+#[derive(Debug)]
+#[derive(Copy)]
+#[derive(Clone)]
+#[derive(PartialEq)]
+pub enum TokenType {
+  Unrecognized,
+
+  // Single-character tokens.
+  LeftParen, RightParen,
+  LeftSquareBrace, RightSquareBrace,
+  LeftCurlyBrace, RightCurlyBrace,
+  Colon, Pipe, Backslash,
+  Plus, Minus, Star, Slash,
+  Dollar, Semicolon, Comma,
+  Underscore,
+
+
+  // One or two character tokens.
+  Equal, EqualEqual, NotEqual,
+  And, Or,
+  Greater, GreaterEq,
+  Less, LessEq,
+  Arrow, // ->
+  PipeForwards,  // |>
+
+  // Literals.
+  LiteralIdentifier, LiteralString, LiteralChar, LiteralNumber,
+
+  // Keywords.
+  True, False,
+  If, Then, Else,
+  Let, In,
+  Yield,
+
+  Comment,
+  Ignore,
+  Eof,
 }
 
 struct ScannerIter<'a> {
@@ -60,12 +89,14 @@ impl<'a> ScannerIter<'a> {
           '*' => Star,
           ';' => Semicolon,
           ',' => Comma,
+          '\\' => Backslash,
+          '_' => Underscore,
 
           '"' => {
               loop {
                   match self.next() {
                       Some(i) => match i {
-                        '\\' => {self.advance();},
+                        '\\' => self.advance(),
                         '"' => break,
                         _ => (),
                       },
@@ -73,6 +104,19 @@ impl<'a> ScannerIter<'a> {
                   }
               }
               LiteralString
+          }
+
+          '\'' => {
+            if self.next().expect("Char content expected") == '\\' {
+              self.advance();
+            }
+
+            let closing: char = self.next().expect("Closing single quote");
+            if closing != '\'' {
+              panic!("Expecting closing single quote, not {}", closing)
+            }
+
+            LiteralChar
           }
 
           '!' => match self.peek() {
@@ -138,14 +182,14 @@ impl<'a> ScannerIter<'a> {
                 }
               }
             };
-            Number
+            LiteralNumber
           },
 
-          'a'..='z' | 'A'..='Z' => {
+          'a'..='z' | 'A'..='Z' | '$' => {
               loop {
                   match self.peek() {
                       Some(i) => match i {
-                        'a'..='z'|'A'..='Z'|'0'..='9'|'-'|'_' => self.advance(),
+                        'a'..='z'|'A'..='Z'|'0'..='9'|'-'|'_'|'\'' => self.advance(),
                         _ => break,
                       },
                       None => break,
@@ -160,7 +204,7 @@ impl<'a> ScannerIter<'a> {
       match error {
         None => {
           match tok {
-            Unrecognized => panic!("Unrecognized token: {:?}", tok),
+            Unrecognized => panic!("Unrecognized token: {}", self.buffer),
             Eof => break,
             Ignore => self.buffer = String::from(""),
             _ => self.add_token(tokens, tok),
@@ -208,58 +252,4 @@ impl<'a> ScannerIter<'a> {
   fn peek(&self) -> Option<char> {
     self.next
   }
-
-//   fn peek2(&mut self) -> Option<char> {
-//     match self.iter.peek() {
-//       Some(i) => Some(*i),
-//       None => None,
-//     }
-//   }
-}
-
-
-#[derive(Debug)]
-#[derive(Clone)]
-pub struct Token {
-  pub kind: TokenType,
-  pub line: usize,
-  pub literal: String,
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-#[derive(Copy)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-pub enum TokenType {
-  Unrecognized,
-
-  // Single-character tokens.
-  LeftParen, RightParen,
-  LeftSquareBrace, RightSquareBrace,
-  LeftCurlyBrace, RightCurlyBrace,
-  Colon, Pipe, Backslash,
-  Plus, Minus, Star, Slash,
-  Dollar, Semicolon, Comma,
-
-  // One or two character tokens.
-  Equal, EqualEqual, NotEqual,
-  And, Or,
-  Greater, GreaterEq,
-  Less, LessEq,
-  Arrow, // ->
-  PipeForwards,  // |>
-
-  // Literals.
-  LiteralIdentifier, LiteralString, Number,
-
-  // Keywords.
-  True, False,
-  If, Then, Else,
-  Let, In,
-  Yield,
-
-  Comment,
-  Ignore,
-  Eof,
 }
