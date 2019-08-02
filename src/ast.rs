@@ -1,5 +1,5 @@
 use crate::value::LangValue;
-use crate::interpret::Environment;
+use crate::interpret::{Environment, Evaluatable};
 use alloc::{boxed::Box, string::String, vec::Vec};
 // use crate::interpreter::{TokenType, TokenType::*};
 use core::fmt;
@@ -41,8 +41,8 @@ impl fmt::Display for DeclOrExpr {
 
 // {left} = {right};
 pub struct Decl {
-    left: Box<dyn Destructure>,
-    right: Box<dyn Expr>,
+    pub left: Box<dyn Destructure>,
+    pub right: Box<dyn Expr>,
 }
 impl fmt::Display for Decl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -51,14 +51,14 @@ impl fmt::Display for Decl {
 }
 
 pub trait Destructure: fmt::Display {
-    fn destruct(&self, val: LangValue, env: &mut Environment);
+    fn destruct(&self, env: &mut Environment, val: LangValue);
 }
 
 pub struct Identifier {
     name: String,
 }
 impl Destructure for Identifier {
-    fn destruct(&self, val: LangValue, env: &mut Environment) {
+    fn destruct(&self, env: &mut Environment, val: LangValue) {
         env.insert(self.name.clone(), val);
     }
 }
@@ -69,7 +69,7 @@ impl fmt::Display for Identifier {
 }
 
 
-pub trait Expr: fmt::Display {} // + Evaluatable
+pub trait Expr: fmt::Display + Evaluatable {}
 
 
 // impl Expr for LangValue {

@@ -1,4 +1,5 @@
 use crate::ast;
+use crate::interpret::{Evaluatable, Environment};
 use alloc::{boxed::Box, string::String};
 use core::fmt;
 
@@ -19,6 +20,11 @@ impl fmt::Display for LangValue {
             LangString(x) => write!(f, "{:?}", x),
             _ => write!(f, "<unknown val>"),
         }
+    }
+}
+impl Evaluatable for LangValue {
+    fn eval(&self, env: &Environment) -> LangValue {
+        self.clone()
     }
 }
 impl ast::Expr for LangValue {}

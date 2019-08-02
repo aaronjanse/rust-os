@@ -3,13 +3,19 @@ use alloc::{boxed::Box};
 use crate::ast::*;
 use crate::value::LangValue;
 use crate::println;
+use crate::interpret;
+use crate::interpret::Evaluatable;
 
 pub fn test_interpreter() {
-    println!("{}", Scope{
+    let env = interpret::Environment::new();
+
+    let ast = Scope{
         lines: vec![
             DeclOrExpr::Expression(Box::new(LangValue::LangNumber(7.0)) as Box<dyn Expr>),
         ],
-    });
+    };
+
+    println!("{}", ast.eval(&env));
 //   let text = String::from(r##"
 // $ print println getch = {
 //   [ch, get] = getch nil;
