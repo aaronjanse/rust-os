@@ -1,0 +1,40 @@
+fn $ : getch, print, println {
+  println $ fib $ read-int getch
+}
+
+fn fib : n = {
+    if n < 2 {
+        n
+    } else {
+        + fib(n-1) fib(n-2)
+    }
+}
+
+fn read-int : getch base {
+  [getch' ch] = getch nil;
+  match ch {
+    '\n' -> base;
+    _ -> read-int getch' (+ (char-to-int ch) (* base 10));
+  }
+}
+
+fn char-to-int : ch {
+    match ch {
+        '0' -> 0;
+        '1' -> 1;
+        '2' -> 2;
+        '3' -> 3;
+        '4' -> 4;
+        '5' -> 5;
+        '6' -> 6;
+        '7' -> 7;
+        '8' -> 8;
+        '9' -> 9;
+    }
+}
+
+-----
+
+-- window: {  
+windows = []
+

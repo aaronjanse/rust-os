@@ -49,7 +49,7 @@ pub enum TokenType {
   Eof,
 }
 
-struct ScannerIter<'a> {
+pub struct ScannerIter<'a> {
   source: &'a String,
   iter: core::iter::Peekable<core::str::Chars<'a>>,
   next: Option<char>,
@@ -58,7 +58,7 @@ struct ScannerIter<'a> {
 }
 
 impl<'a> ScannerIter<'a> {
-  fn init(source: &'a String) -> ScannerIter<'a> {
+  pub fn init(source: &'a String) -> ScannerIter<'a> {
     let mut iter = source.chars().peekable();
     let next = iter.next();
     ScannerIter {
@@ -68,7 +68,7 @@ impl<'a> ScannerIter<'a> {
     }
   }
 
-  fn scan(&mut self, tokens: &mut Vec<Token>) {
+  pub fn scan(&mut self, tokens: &mut Vec<Token>) {
     let error: Option<String> = None;
 
     use TokenType::*;
@@ -205,7 +205,12 @@ impl<'a> ScannerIter<'a> {
         None => {
           match tok {
             Unrecognized => panic!("Unrecognized token: {}", self.buffer),
-            Eof => break,
+            Eof => {
+              self.add_token(tokens, Eof);
+              self.add_token(tokens, Eof);
+              self.add_token(tokens, Eof);
+              break
+            },
             Ignore => self.buffer = String::from(""),
             _ => self.add_token(tokens, tok),
           }

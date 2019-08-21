@@ -1,45 +1,43 @@
-// use alloc::{vec::Vec, string::String, boxed::Box};
-use alloc::{boxed::Box};
-use crate::ast::*;
-use crate::value::LangValue;
+use alloc::{vec::Vec, string::String};
+use crate::scan::{ScannerIter, Token};
 use crate::println;
 use crate::interpret;
-use crate::interpret::Evaluatable;
 
 pub fn test_interpreter() {
     let env = interpret::Environment::new();
 
-    let ast = Scope{
-        lines: vec![
-            DeclOrExpr::Expression(Box::new(LangValue::LangNumber(7.0)) as Box<dyn Expr>),
-        ],
-    };
+    // let ast = Scope{
+    //     lines: vec![
+    //         DeclOrExpr::Expression(Box::new(LangValue::LangNumber(7.0)) as Box<dyn Expr>),
+    //     ],
+    // };
 
-    println!("{}", ast.eval(&env));
-//   let text = String::from(r##"
-// $ print println getch = {
-//   [ch, get] = getch nil;
-//   listenInput print println getch line;
-// }
-// "##);
-//   let mut tokens: Vec<Token> = Vec::new();
-//   ScannerIter::init(&text).scan(&mut tokens);
+    // println!("{}", ast.eval(&env));
+  let text = String::from(r##"
+$ print println getch = {
+  [ch, get] = getch nil;
+  listenInput print println getch line;
+}
+"##);
 
-//   let mut token_iter = crate::parser::TokenIter::from(tokens);
-//   match crate::parser::parse_file(&mut token_iter) {
-//     Ok(ast) => {
-//       for decl in ast {
-//         println!("{}", decl.repr());
-//       }
-//     },
-//     Err(e) => {
-//       println!("{}", e);
-//       let tok = token_iter.prev();
-//       println!("Instead, I got {} on line {}", tok.literal, tok.line);
-//       let lines: Vec<&str> = text.split("\n").collect();
-//       println!("{}", lines[tok.line])
-//     }
-//   }
+  let mut tokens: Vec<Token> = Vec::new();
+  ScannerIter::init(&text).scan(&mut tokens);
+
+  let mut token_iter = crate::parse::TokenIter::from(tokens);
+  match crate::parse::parse_file(&mut token_iter) {
+    Ok(ast) => {
+      for decl in ast {
+        println!("{}", decl);
+      }
+    },
+    Err(e) => {
+      println!("{}", e);
+      let tok = token_iter.prev();
+      println!("Instead, I got {} on line {}", tok.literal, tok.line);
+      let lines: Vec<&str> = text.split("\n").collect();
+      println!("{}", lines[tok.line])
+    }
+  }
 }
 
 // $ print println getch = {

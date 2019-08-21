@@ -1,7 +1,7 @@
-use crate::value::LangValue;
+use crate::value::{LangValue, Lambda};
 use crate::interpret::{Environment, Evaluatable};
 use alloc::{boxed::Box, string::String, vec::Vec};
-// use crate::interpreter::{TokenType, TokenType::*};
+use crate::scan::{TokenType};
 use core::fmt;
 
 fn indent(s: String) -> String {
@@ -12,10 +12,26 @@ fn indent(s: String) -> String {
     out.join("\n")
 }
 
+#[derive(Clone)]
 pub struct Scope {
+    pub env: Box<Environment>,
     pub lines: Vec<DeclOrExpr>,
 }
 impl fmt::Display for Scope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut line_strs: Vec<String> = Vec::new();
+        for i in 0..self.lines.len() {
+            line_strs.push(indent(format!("{}", self.lines[i])));
+        }
+        write!(f, "{{<env>\n{}\n}}", line_strs.join("\n"))
+    }
+}
+
+#[derive(Clone)]
+pub struct Block {
+    pub lines: Vec<DeclOrExpr>,
+}
+impl fmt::Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut line_strs: Vec<String> = Vec::new();
         for i in 0..self.lines.len() {
@@ -25,6 +41,7 @@ impl fmt::Display for Scope {
     }
 }
 
+#[derive(Clone)]
 pub enum DeclOrExpr {
     Declaration(Decl),
     Expression(Box<dyn Expr>),
@@ -40,6 +57,7 @@ impl fmt::Display for DeclOrExpr {
 }
 
 // {left} = {right};
+#[derive(Clone)]
 pub struct Decl {
     pub left: Box<dyn Destructure>,
     pub right: Box<dyn Expr>,
@@ -50,12 +68,55 @@ impl fmt::Display for Decl {
     }
 }
 
-pub trait Destructure: fmt::Display {
-    fn destruct(&self, env: &mut Environment, val: LangValue);
+#[derive(Clone)]
+pub struct FuncEnv {
+  pub env: Environment,
+  pub func: Lambda,
+}
+impl fmt::Display for FuncEnv {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{<fn env>{}}}", self.func)
+    }
 }
 
+#[derive(Clone)]
+pub struct FuncDef {
+    pub args: Vec<Box<dyn Destructure>>,
+    pub body: Box<dyn Expr>,
+}
+impl fmt::Display for FuncDef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let arg_strs: Vec<String> = self.args.iter().map(|x| format!("{}", x)).collect();
+        write!(f, "(\\({}) ->\n{};",
+            arg_strs.join(" "),
+            indent(format!("{}", self.body))
+        )
+    }
+}
+
+pub trait Destructure: fmt::Display + DestructureClone {
+    fn destruct(&self, env: &mut Environment, val: LangValue);
+}
+trait DestructureClone {
+    fn clone_box(&self) -> Box<dyn Destructure>;
+}
+impl<T> DestructureClone for T
+where
+    T: 'static + Destructure + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Destructure> {
+        Box::new(self.clone())
+    }
+}
+impl Clone for Box<dyn Destructure> {
+    fn clone(&self) -> Box<dyn Destructure> {
+        self.clone_box()
+    }
+}
+
+#[derive(Clone)]
 pub struct Identifier {
-    name: String,
+    pub name: String,
 }
 impl Destructure for Identifier {
     fn destruct(&self, env: &mut Environment, val: LangValue) {
@@ -68,161 +129,64 @@ impl fmt::Display for Identifier {
     }
 }
 
+pub trait Expr: fmt::Display + Evaluatable + ExprClone {}
 
-pub trait Expr: fmt::Display + Evaluatable {}
+trait ExprClone {
+    fn clone_box(&self) -> Box<dyn Expr>;
+}
+impl<T> ExprClone for T
+where
+    T: 'static + Expr + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Expr> {
+        Box::new(self.clone())
+    }
+}
+impl Clone for Box<dyn Expr> {
+    fn clone(&self) -> Box<dyn Expr> {
+        self.clone_box()
+    }
+}
 
+#[derive(Clone)]
+pub struct FuncCall {
+    pub func: Box<dyn Expr>,
+    pub arg: Box<dyn Expr>,
+}
+impl fmt::Display for FuncCall {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({} {})", self.func, self.arg)
+    }
+}
 
-// impl Expr for LangValue {
-//     fn eval(&self) -> LangValue {
-//         self.clone()
-//     }
-// }
-// impl Representable for LangValue {
-//     fn repr(&self) -> String {
-//         format!("{:?}", self)
-//     }
-// }
+#[derive(Clone)]
+pub struct BinaryExpr {
+    pub oper: TokenType,
+    pub left: Box<dyn Expr>,
+    pub right: Box<dyn Expr>,
+}
+impl fmt::Display for BinaryExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let oper_str = match self.oper {
+            TokenType::Slash => "/",
+            TokenType::Star => "*",
+            TokenType::Plus => "+",
+            TokenType::Minus => "-",
+            _ => "?",
+        };
+        write!(f, "{}{}{}", self.left, oper_str, self.right)
+    }
+}
+impl Expr for BinaryExpr {}
 
-
-
-// // these change the environment
-// pub enum Assign {
-//     DefineFunction
-//     AssignVariable
-// }
-
-// // pub fn repr_lang_val(val: LangValue) -> String {
-// //     unimplemented!()
-// // }
-
-
-
-// pub struct Decl {
-//     pub name: String,
-//     pub params: Vec<String>,
-//     pub body: Box<dyn Expr>,
-// }
-// impl Representable for DefineFunction {
-//     fn repr(&self) -> String {
-//         format!("def {} ({:?}) -> {}", self.name, self.params, self.body.repr())
-//     }
-// }
-
-// pub struct FnCall {
-//     pub name: String,
-//     pub args: Vec<Box<dyn Expr>>,
-// }
-// impl Expr for FnCall {
-//     fn eval(&self) -> LangValue {
-//         LangNone
-//     }
-// }
-// impl Representable for FnCall {
-//     fn repr(&self) -> String {
-//         let mut arg_strs: Vec<String> = Vec::new();
-//         for i in 0..self.args.len() {
-//             arg_strs.push(self.args[i].repr());
-//         }
-//         format!("(do {} {:?})", self.name, arg_strs)
-//     }
-// }
-
-// pub struct Identifier {
-//     pub name: String,
-// }
-// impl Representable for Identifier {
-//     fn repr(&self) -> String {
-//         self.name.clone()
-//     }
-// }
-// impl Expr for Identifier {
-//     fn eval(&self) -> LangValue {
-//         LangNone
-//     }
-// }
-
-// pub struct BinaryExpr {
-//     pub oper: TokenType,
-//     pub left: Box<dyn Expr>,
-//     pub right: Box<dyn Expr>,
-// }
-// impl Representable for BinaryExpr {
-//     fn repr(&self) -> String {
-//         let oper_str = match self.oper {
-//             Star => "*",
-//             Slash => "/",
-//             Plus => "+",
-//             Minus => "-",
-//             _ => "?",
-//         };
-//         format!("({} {} {})", oper_str, self.left.repr(), self.right.repr())
-//     }
-// }
-// impl Expr for BinaryExpr {
-//     fn eval(&self) -> LangValue {
-//         match self.oper {
-//             Star | Slash | Plus | Minus => {
-//                 let left_eval = self.left.eval();
-//                 let left = match left_eval {
-//                     LangNumber(x) => x,
-//                     _ => panic!("NaN {:?}", left_eval),
-//                 };
-//                 let right_eval = self.right.eval();
-//                 let right = match right_eval {
-//                     LangNumber(x) => x,
-//                     _ => panic!("NaN {:?}", right_eval),
-//                 };
-
-//                 LangNumber(match self.oper {
-//                     Plus => left + right,
-//                     Minus => left - right,
-//                     Star => left * right,
-//                     Slash => left / right,
-//                     _ => panic!("Cannot handle {:?}", self.oper),
-//                 })
-//             },
-//             _ => panic!("Cannot eval {:?}", self.oper),
-//         }
-//     }
-// }
-
-// pub struct List {
-//     pub left: Box<dyn Expr>,
-//     pub right: Box<dyn Expr>,
-// }
-// impl Representable for List {
-//     fn repr(&self) -> String {
-//         format!("[{} {}]", self.left.repr(), self.right.repr())
-//     }
-// }
-// impl Expr for List {
-//     fn eval(&self) -> LangValue {
-//         LangPair{
-//             left: Box::new(self.left.eval()),
-//             right: Box::new(self.right.eval()),
-//         }
-//     }
-// }
-
-// pub struct Block {
-//     pub items: Vec<ExprOrDecl>,
-// }
-// impl Representable for Block {
-//     fn repr(&self) -> String {
-//         let mut strs: Vec<String> = Vec::new();
-//         let mut i = 0;
-//         loop {
-//             if i >= self.items.len() {
-//                 break;
-//             }
-//             strs.push(self.items[i].repr());
-//             i += 1;
-//         }
-//         format!("{{{}}}", strs.join("\n"))
-//     }
-// }
-// impl Expr for Block {
-//     fn eval(&self) -> LangValue {
-//         LangNone
-//     }
-// }
+#[derive(Clone)]
+pub struct List {
+    pub left: Box<dyn Expr>,
+    pub right: Box<dyn Expr>,
+}
+impl fmt::Display for List {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{} {}]", self.left, self.right)
+    }
+}
+impl Expr for List {}
